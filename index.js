@@ -14,7 +14,7 @@ const {
 const PORT = process.env.PORT || 3000;
 
 const GEMINI_API_URL =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
 
 // Memory:
 // 50 lượt hội thoại = tối đa 100 message

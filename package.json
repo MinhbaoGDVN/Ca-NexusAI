@@ -1,7 +1,7 @@
 {
-  "name": "discord-ai-bot",
+  "name": "Ca-NexusAI",
   "version": "1.0.0",
-  "description": "Discord AI Bot",
+  "description": "Ca-NexusAI",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

@@ -13,8 +13,7 @@ const GROQ_API_URL =
     "https://api.groq.com/openai/v1/chat/completions";
 const JSONBIN_API_URL =
     "https://api.jsonbin.io/v3/b";
-const GROQ_MODEL =
-    "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 const MAX_MEMORY_MESSAGES = 50;
 const MEMORY_EXPIRATION = 6 * 60 * 60 * 1000;
 const memories = new Map();

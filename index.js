@@ -6,7 +6,8 @@ const {
     Events,
     REST,
     Routes,
-    SlashCommandBuilder
+    SlashCommandBuilder, 
+    ActivityType
 } = require("discord.js");
 const PORT = process.env.PORT || 3000;
 const GROQ_API_URL =
@@ -362,15 +363,29 @@ client.once(
         console.log(
             `Ca-NexusAI đã online dưới tên ${readyClient.user.tag}`
         );
+
         console.log(
             `AI Model: ${GROQ_MODEL}`
         );
+
         console.log(
             `Memory: ${MAX_MEMORY_MESSAGES} messages/channel`
         );
+
+        readyClient.user.setPresence({
+            activities: [
+                {
+                    name: "HT-NexusAI Beta 1.2.4",
+                    type: ActivityType.Watching
+                }
+            ],
+            status: "online"
+        });
+
         registerCommands().catch(console.error);
     }
 );
+
 client.on(
     Events.MessageCreate,
     async (message) => {

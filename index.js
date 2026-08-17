@@ -332,7 +332,7 @@ User ID: ${user.id}
                 model: GROQ_MODEL,
                 messages,
                 temperature: 0.7,
-                max_tokens: 1024
+                max_tokens: 1024,
                 tool_choice: "none"
             })
         }

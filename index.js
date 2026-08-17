@@ -3,16 +3,151 @@ const http = require("http");
 const {
     Client,
     GatewayIntentBits,
-    Events
+    Events,
+    REST,
+    Routes,
+    SlashCommandBuilder
 } = require("discord.js");
 const PORT = process.env.PORT || 3000;
 const GROQ_API_URL =
     "https://api.groq.com/openai/v1/chat/completions";
+const JSONBIN_API_URL =
+    "https://api.jsonbin.io/v3/b";
 const GROQ_MODEL =
     "llama-3.3-70b-versatile";
 const MAX_MEMORY_MESSAGES = 50;
 const MEMORY_EXPIRATION = 6 * 60 * 60 * 1000;
 const memories = new Map();
+const commands = 
+    new SlashCommandBuilder()
+        .setName("config")
+        .setDescription("Cấu hình Ca-NexusAI")
+        .addStringOption(option =>
+            option
+                .setName("setting")
+                .setDescription("Cài đặt cần thay đổi")
+                .setRequired(true)
+                .addChoices({
+                    name: "NHAN_DAO",
+                    value: "NHAN_DAO"
+                })
+        )
+        .addBooleanOption(option =>
+            option
+                .setName("value")
+                .setDescription("Bật hoặc tắt")
+                .setRequired(true)
+        );
+async function registerCommands() {
+    if (!process.env.DISCORD_CLIENT_ID) {
+        throw new Error(
+            "Không tìm thấy DISCORD_CLIENT_ID!"
+        );
+    }
+
+    const rest = new REST({
+        version: "10"
+    }).setToken(
+        process.env.DISCORD_TOKEN
+    );
+
+    await rest.put(
+        Routes.applicationCommands(
+            process.env.DISCORD_CLIENT_ID
+        ),
+        {
+            body: [
+                commands.toJSON()
+            ]
+        }
+    );
+
+    console.log(
+        "[COMMAND] Đã đăng ký /config global."
+    );
+}
+async function getDatabase() {
+    const response = await fetch(
+        `${JSONBIN_API_URL}/${process.env.JSONBIN_BIN_ID}/latest`,
+        {
+            method: "GET",
+            headers: {
+                "X-Master-Key":
+                    process.env.JSONBIN_API_KEY
+            }
+        }
+    );
+
+    if (!response.ok) {
+        const errorText =
+            await response.text();
+
+        throw new Error(
+            `JSONBin GET ${response.status}: ${errorText}`
+        );
+    }
+
+    const data =
+        await response.json();
+
+    return data.record || {};
+}
+async function saveDatabase(database) {
+    const response = await fetch(
+        `${JSONBIN_API_URL}/${process.env.JSONBIN_BIN_ID}`,
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type":
+                    "application/json",
+
+                "X-Master-Key":
+                    process.env.JSONBIN_API_KEY
+            },
+
+            body: JSON.stringify(database)
+        }
+    );
+
+    if (!response.ok) {
+        const errorText =
+            await response.text();
+
+        throw new Error(
+            `JSONBin PUT ${response.status}: ${errorText}`
+        );
+    }
+
+    return await response.json();
+}
+async function getConfig(guildId, configName) {
+    const database =
+        await getDatabase();
+
+    return (
+        database[guildId]?.[configName] ??
+        false
+    );
+}
+async function setConfig(
+    guildId,
+    configName,
+    value
+) {
+    const database =
+        await getDatabase();
+
+    if (!database[guildId]) {
+        database[guildId] = {};
+    }
+
+    database[guildId][configName] =
+        value;
+
+    await saveDatabase(database);
+
+    return value;
+}
 const SYSTEM_PROMPT = `
 Bạn là Ca-NexusAI, một AI assistant hoạt động trên Discord.
 ## TÍNH CÁCH
@@ -218,6 +353,7 @@ User ID: ${user.id}
     }
     return answer.trim();
 }
+
 client.once(
     Events.ClientReady,
     (readyClient) => {
@@ -230,6 +366,7 @@ client.once(
         console.log(
             `Memory: ${MAX_MEMORY_MESSAGES} messages/channel`
         );
+        registerCommands().catch(console.error);
     }
 );
 client.on(
@@ -238,7 +375,14 @@ client.on(
         if (message.author.bot) {
             return;
         }
+        const nhaDao =
+            await getConfig(
+                message.guild.id,
+                "NHAN_DAO"
+            );
+        
         if (
+            !nhaDao &&
             !message.mentions.has(
                 client.user.id
             )
@@ -333,6 +477,80 @@ client.on(
             await message.reply(
                 "AI đang gặp vấn đề một chút, thử lại sau nhé."
             );
+        }
+    }
+);
+client.on(
+    Events.InteractionCreate,
+    async (interaction) => {
+        if (!interaction.isChatInputCommand()) {
+            return;
+        }
+
+        if (interaction.commandName !== "config") {
+            return;
+        }
+
+        if (!interaction.guild) {
+            await interaction.reply({
+                content:
+                    "Lệnh này chỉ dùng được trong server.",
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        if (
+            !interaction.memberPermissions
+                .has("ManageGuild")
+        ) {
+            await interaction.reply({
+                content:
+                    "Bạn cần quyền Quản lý Server để dùng lệnh này.",
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        const setting =
+            interaction.options.getString(
+                "setting"
+            );
+
+        const value =
+            interaction.options.getBoolean(
+                "value"
+            );
+
+        try {
+            await setConfig(
+                interaction.guild.id,
+                setting,
+                value
+            );
+
+            await interaction.reply({
+                content:
+                    `Đã đặt \`${setting}\` thành \`${value}\`.`,
+                ephemeral: true
+            });
+
+            console.log(
+                `[CONFIG] ${interaction.guild.name} | ${setting} = ${value}`
+            );
+        } catch (error) {
+            console.error(
+                "[CONFIG ERROR]",
+                error
+            );
+
+            await interaction.reply({
+                content:
+                    "Không thể lưu cấu hình.",
+                ephemeral: true
+            });
         }
     }
 );

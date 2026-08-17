@@ -333,6 +333,7 @@ User ID: ${user.id}
                 messages,
                 temperature: 0.7,
                 max_tokens: 1024
+                tool_choice: "none"
             })
         }
     );
@@ -524,7 +525,6 @@ client.on(
             });
         
             return;
-        }
         }
 
         const setting =

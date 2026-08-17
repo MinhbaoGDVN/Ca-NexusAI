@@ -500,17 +500,29 @@ client.on(
             return;
         }
 
-        if (
-            !interaction.memberPermissions
-                .has("ManageGuild")
-        ) {
+        const CONFIG_ALLOWED_USERS = [
+            "1064137649725653127"
+        ];
+        
+        const isAllowedUser =
+            CONFIG_ALLOWED_USERS.includes(
+                interaction.user.id
+            );
+        
+        const hasManageGuild =
+            interaction.memberPermissions?.has(
+                "ManageGuild"
+            );
+        
+        if (!isAllowedUser && !hasManageGuild) {
             await interaction.reply({
                 content:
                     "Bạn cần quyền Quản lý Server để dùng lệnh này.",
                 ephemeral: true
             });
-
+        
             return;
+        }
         }
 
         const setting =
